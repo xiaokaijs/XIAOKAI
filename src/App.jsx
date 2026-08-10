@@ -128,7 +128,7 @@ const projects = [
       '担任小组组长，负责主程序、PCG 相关内容与项目集成；使用 UE PCG 与 PCGEx 完成道路、植被和遗迹区域控制，并统筹接入碰撞、NavMesh、敌人、道具与胜负流程。项目获第十四届未来设计师 NCDA 云南省赛二等奖。',
     tags: ['UE5.6', 'PCG', 'PCGEx', 'Blueprint', 'NavMesh'],
     role: '组长 / 主程序 / PCG 内容 / 项目集成',
-    year: '2026.06',
+    year: '2026.04 - 2026.06',
     award: 'NCDA 云南省赛二等奖',
     media: {
       type: 'video',
@@ -154,7 +154,7 @@ const projects = [
       '在小组项目中承担主程序、项目集成、关卡和主要美术资产工作，完成 PC 逃生流程与 NPC 状态逻辑；除策划外，项目其他实现与集成工作主要由我完成。',
     tags: ['UE5', 'Blueprint', 'PC Gameplay', 'AI State', 'Level Integration', 'Game Asset'],
     role: '主程序 / 项目集成 / 关卡与美术资产',
-    year: '2026.01',
+    year: '2025.11 - 2026.01',
     media: {
       type: 'video',
       sequence: 'WORK FILM / 03',
@@ -179,7 +179,7 @@ const projects = [
       '在 Escape PC 原作基础上，使用 OpenXR 与 VRExpansionPlugin 扩展 VR 移动、抓取、武器操作和交互反馈，并完成真机流程验证与项目集成。',
     tags: ['OpenXR', 'VRExpansionPlugin', 'VR Movement', 'Grab Interaction', 'Weapon Interaction', 'Integration'],
     role: '主程序 / VR 交互 / 项目集成',
-    year: '2026.06',
+    year: '2026.04 - 2026.06',
     media: {
       type: 'video',
       sequence: 'WORK FILM / 04',
@@ -204,7 +204,7 @@ const projects = [
       '完成模型与拓扑、UV、高低模烘焙，以及金属、木材、皮革和宝石材质分层，建立从建模到最终渲染的完整游戏资产流程。',
     tags: ['Maya', 'RizomUV', 'Substance 3D Painter', 'PBR'],
     role: '个人资产制作',
-    year: '2026.05',
+    year: '2026.04 - 2026.05',
     media: {
       type: 'image',
       sequence: 'ASSET VIEW / 05',
@@ -1123,14 +1123,17 @@ function App() {
 
             <div className="profile-copy" data-reveal>
               <p className="profile-lead">
-                云南大学数字媒体技术 2027 届本科生，专业成绩前 5%。持续学习游戏开发、技术美术与 UE5 工程实践，希望在游戏方向长期深耕。
+                云南大学数字媒体技术 2027 届本科生，专业成绩前 5%。我对游戏的兴趣不仅来自长期游玩，也来自对角色、场景与交互如何被实现的持续好奇；希望把这份热爱发展为长期职业，在游戏开发、技术美术与 UE5 工程方向持续深耕。
               </p>
               <div className="profile-detail">
                 <p>
-                  我把角色材质、Blueprint 交互、PCG、VR 真机与 PBR 资产流程放进实际项目验证，习惯从画面或交互问题回查贴图、材质、灯光、逻辑和时序设置。
+                  长期体验二次元与风格化 RPG、开放世界、CRPG、SLG/4X、塔防、竞技射击、沙盒和模拟经营等类型，深度游玩《原神》《崩坏：星穹铁道》《绝区零》《明日方舟：终末地》《文明 VI》《群星》《GTA V》《博德之门 3》《CS2》《守望先锋》《我的世界》等作品。
                 </p>
                 <p>
-                  目前能够使用 UE、Unity、Maya、Blender、RizomUV、Substance 3D Painter、Photoshop 与 Premiere，并结合 Codex Agent、Unreal MCP 和 Unity MCP 辅助开发与核验。
+                  游玩时，我会主动观察角色渲染、材质与光照、场景氛围、战斗反馈、关卡节奏和交互体验，并把这些观察转化为角色材质、Blueprint、PCG、VR 真机与 PBR 资产实践；遇到问题时，会从贴图、材质、灯光、逻辑和时序逐项回查。
+                </p>
+                <p>
+                  目前能够使用 UE、Unity、Maya、Blender、RizomUV、Substance 3D Painter、Photoshop 与 Premiere，并结合 Codex Agent、Unreal MCP 和 Unity MCP 辅助开发、验证结果与整理技术过程。
                 </p>
               </div>
             </div>

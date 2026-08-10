@@ -793,12 +793,15 @@ function Header() {
     setEmailCopyState(copied ? 'copied' : 'failed')
     window.clearTimeout(feedbackTimerRef.current)
     feedbackTimerRef.current = window.setTimeout(() => setEmailCopyState('idle'), 2400)
+    window.setTimeout(() => {
+      window.location.assign(`mailto:${portfolioEmail}`)
+    }, 160)
   }
 
   const emailFeedback = emailCopyState === 'copied'
-    ? '邮箱已复制'
+    ? '邮箱已复制，正在打开邮件客户端'
     : emailCopyState === 'failed'
-      ? `复制失败：${portfolioEmail}`
+      ? '复制失败，正在打开邮件客户端'
       : ''
 
   return (
@@ -819,8 +822,8 @@ function Header() {
           className={`header-mail ${emailCopyState === 'copied' ? 'is-copied' : ''}`}
           type="button"
           onClick={handleEmailCopy}
-          aria-label={emailCopyState === 'copied' ? '邮箱已复制' : `复制邮箱地址 ${portfolioEmail}`}
-          title={`复制邮箱：${portfolioEmail}`}
+          aria-label={emailCopyState === 'copied' ? '邮箱已复制' : '复制邮箱并打开邮件客户端'}
+          title="点击复制邮箱并打开默认邮件客户端"
         >
           {emailCopyState === 'copied'
             ? <Check size={18} strokeWidth={1.9} aria-hidden="true" />

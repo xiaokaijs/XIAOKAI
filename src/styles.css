@@ -190,21 +190,58 @@ video {
   transform-origin: left;
 }
 
+.header-mail-wrap {
+  position: relative;
+  justify-self: end;
+}
+
 .header-mail {
   display: grid;
   place-items: center;
-  justify-self: end;
   width: 42px;
   height: 42px;
+  padding: 0;
   border: 1px solid currentColor;
   border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
   transition: color 180ms ease, background-color 180ms ease;
 }
 
 .header-mail:hover,
-.header-mail:focus-visible {
+.header-mail:focus-visible,
+.header-mail.is-copied {
   color: var(--ink);
   background: var(--acid);
+}
+
+.header-mail-feedback {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: max-content;
+  max-width: calc(100vw - 28px);
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  background: rgba(17, 19, 21, 0.94);
+  box-shadow: 0 8px 24px rgba(17, 19, 21, 0.16);
+  font-family: Consolas, "Microsoft YaHei UI", monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.header-mail-feedback.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.header-mail-feedback.is-error {
+  border-color: rgba(255, 116, 109, 0.58);
 }
 
 .hero {

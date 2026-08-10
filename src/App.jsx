@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Braces,
   Boxes,
+  Check,
   Cpu,
   Download,
   Gamepad2,
@@ -22,6 +23,41 @@ import Grainient from './Grainient.jsx'
 gsap.registerPlugin(ScrollTrigger)
 
 const assetPath = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
+const portfolioEmail = '3126976394@qq.com'
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      // Fall through for browsers that expose Clipboard API but deny access.
+    }
+  }
+
+  const textArea = document.createElement('textarea')
+  const activeElement = document.activeElement
+  textArea.value = text
+  textArea.setAttribute('readonly', '')
+  textArea.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0;pointer-events:none;'
+  document.body.appendChild(textArea)
+  textArea.focus()
+  textArea.select()
+  textArea.setSelectionRange(0, text.length)
+
+  let copied = false
+  try {
+    copied = document.execCommand('copy')
+  } catch {
+    copied = false
+  }
+
+  textArea.remove()
+  if (activeElement instanceof HTMLElement) {
+    activeElement.focus({ preventScroll: true })
+  }
+  return copied
+}
 
 const navItems = [
   { href: '#profile', label: '01 PROFILE' },
@@ -726,7 +762,9 @@ function HeroVideo() {
 
 function Header() {
   const [scrolled, setScrolled] = useState(false)
+  const [emailCopyState, setEmailCopyState] = useState('idle')
   const scrolledRef = useRef(false)
+  const feedbackTimerRef = useRef(0)
 
   useEffect(() => {
     let frameId = 0
@@ -748,6 +786,21 @@ function Header() {
     }
   }, [])
 
+  useEffect(() => () => window.clearTimeout(feedbackTimerRef.current), [])
+
+  const handleEmailCopy = async () => {
+    const copied = await copyTextToClipboard(portfolioEmail)
+    setEmailCopyState(copied ? 'copied' : 'failed')
+    window.clearTimeout(feedbackTimerRef.current)
+    feedbackTimerRef.current = window.setTimeout(() => setEmailCopyState('idle'), 2400)
+  }
+
+  const emailFeedback = emailCopyState === 'copied'
+    ? '邮箱已复制'
+    : emailCopyState === 'failed'
+      ? `复制失败：${portfolioEmail}`
+      : ''
+
   return (
     <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`}>
       <a className="brand" href="#top" aria-label="返回首页">
@@ -761,9 +814,27 @@ function Header() {
           </a>
         ))}
       </nav>
-      <a className="header-mail" href="mailto:3126976394@qq.com" aria-label="发送邮件">
-        <Mail size={18} strokeWidth={1.7} />
-      </a>
+      <div className="header-mail-wrap">
+        <button
+          className={`header-mail ${emailCopyState === 'copied' ? 'is-copied' : ''}`}
+          type="button"
+          onClick={handleEmailCopy}
+          aria-label={emailCopyState === 'copied' ? '邮箱已复制' : `复制邮箱地址 ${portfolioEmail}`}
+          title={`复制邮箱：${portfolioEmail}`}
+        >
+          {emailCopyState === 'copied'
+            ? <Check size={18} strokeWidth={1.9} aria-hidden="true" />
+            : <Mail size={18} strokeWidth={1.7} aria-hidden="true" />}
+        </button>
+        <span
+          className={`header-mail-feedback ${emailCopyState !== 'idle' ? 'is-visible' : ''} ${emailCopyState === 'failed' ? 'is-error' : ''}`}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {emailFeedback}
+        </span>
+      </div>
     </header>
   )
 }

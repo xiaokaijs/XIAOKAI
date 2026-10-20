@@ -120,6 +120,56 @@ const projects = [
   },
   {
     index: '02',
+    slug: 'bg3-reconstruction',
+    tone: 'silver',
+    eyebrow: 'RENDERDOC / AI COLLABORATION',
+    title: 'AI 辅助《博德之门 3》逆向渲染',
+    description:
+      '以《博德之门 3》的帧捕获为分析起点，结合 RenderDoc、Codex 与 Unreal MCP，在 UE5.8 中进行场景重建、模型与材质绑定及画面对照。AI 辅助数据分析、工具脚本与问题排查，我负责目标判断、效果对照与验收。原作资产用于学习展示，成果为艺术性重建。',
+    tags: ['UE5.8', 'RenderDoc', 'Codex / MCP', 'Scene Reconstruction', 'Mesh / UV', 'Material Binding'],
+    role: '个人学习项目 / AI 协作 / 效果验证',
+    year: '2026.10 · 已完成',
+    media: {
+      type: 'video',
+      sequence: 'WORK FILM / 02',
+      eyebrow: 'SCENE RECONSTRUCTION',
+      title: 'BG3 场景重建与自由视角展示',
+      description: '保留完整演示，展示 UE 编辑器中的场景、角色、材质细节与自由视角观察。',
+      duration: '00:38',
+      format: '1080P · 30 FPS',
+      src: assetPath('/media/films/bg3-ai-reconstruction.mp4'),
+      poster: assetPath('/media/posters/bg3-ai-reconstruction.jpg'),
+      playback: 'loop',
+      size: 'standard',
+    },
+  },
+  {
+    index: '03',
+    slug: 'unity-genshin-rendering',
+    tone: 'blue',
+    eyebrow: 'UNITY / STYLIZED CHARACTER',
+    title: 'Unity 原神风格化渲染',
+    description:
+      '以芙宁娜为展示角色，在 Unity URP 中进行原神风格角色渲染学习与效果调试，围绕卡通明暗、面部阴影、头发与服装高光、角色描边调整材质，并通过光照变化观察效果。角色模型与动作使用第三方学习资产。',
+    tags: ['Unity', 'URP', 'HLSL', 'Toon Ramp', 'Face SDF', 'Character Outline'],
+    role: '个人学习项目 / 材质调试 / 效果展示',
+    year: '2026',
+    media: {
+      type: 'video',
+      sequence: 'WORK FILM / 03',
+      eyebrow: 'FURINA / LIGHTING STUDY',
+      title: '芙宁娜 · 风格化角色光照展示',
+      description: '完整循环展示光照变化下的角色明暗、高光与描边表现。',
+      duration: '00:10',
+      format: '1080P · 30 FPS',
+      src: assetPath('/media/films/unity-genshin-furina.mp4'),
+      poster: assetPath('/media/posters/unity-genshin-furina.jpg'),
+      playback: 'loop',
+      size: 'standard',
+    },
+  },
+  {
+    index: '04',
     slug: 'pcg-forest',
     tone: 'acid',
     eyebrow: 'PROCEDURAL WORLD',
@@ -132,7 +182,7 @@ const projects = [
     award: 'NCDA 云南省赛二等奖',
     media: {
       type: 'video',
-      sequence: 'WORK FILM / 02',
+      sequence: 'WORK FILM / 04',
       eyebrow: 'ENVIRONMENT DEMO',
       title: 'PCG Forest 漫游演示',
       description: '展示夜间森林、路线、遗迹区域和可玩流程的最终画面。',
@@ -145,7 +195,7 @@ const projects = [
     },
   },
   {
-    index: '03',
+    index: '05',
     slug: 'escape',
     tone: 'cyan',
     eyebrow: 'GAMEPLAY / PC',
@@ -157,7 +207,7 @@ const projects = [
     year: '2025.11 - 2026.01',
     media: {
       type: 'video',
-      sequence: 'WORK FILM / 03',
+      sequence: 'WORK FILM / 05',
       eyebrow: 'PC GAMEPLAY',
       title: 'Escape PC 原作演示',
       description: '展示第一人称探索、钥匙收集、门锁反馈与关卡推进。',
@@ -170,7 +220,7 @@ const projects = [
     },
   },
   {
-    index: '04',
+    index: '06',
     slug: 'vr-extension',
     tone: 'silver',
     eyebrow: 'GAMEPLAY / XR',
@@ -182,7 +232,7 @@ const projects = [
     year: '2026.04 - 2026.06',
     media: {
       type: 'video',
-      sequence: 'WORK FILM / 04',
+      sequence: 'WORK FILM / 06',
       eyebrow: 'VR HIGHLIGHT',
       title: 'VR 扩展演示',
       description: '展示 VR 场景移动、抓取、武器操作和交互反馈。',
@@ -195,7 +245,7 @@ const projects = [
     },
   },
   {
-    index: '05',
+    index: '07',
     slug: 'dagger',
     tone: 'coral',
     eyebrow: 'GAME ASSET / PBR',
@@ -207,7 +257,7 @@ const projects = [
     year: '2026.04 - 2026.05',
     media: {
       type: 'image',
-      sequence: 'ASSET VIEW / 05',
+      sequence: 'ASSET VIEW / 07',
       eyebrow: 'FINAL ASSET',
       title: '匕首与刀鞘最终渲染',
       description: '以材质分区、磨损层次和不同表面质感为重点完成最终展示。',
@@ -1159,7 +1209,7 @@ function App() {
 
             <div className="metrics" data-reveal>
               <div>
-                <strong>05</strong>
+                <strong>{String(projects.length).padStart(2, '0')}</strong>
                 <span>核心作品</span>
               </div>
               <div>
@@ -1209,7 +1259,7 @@ function App() {
               index="03"
               label="MORE WORK"
               title="实验与拓展"
-              description="补充展示移动端 AR 与浏览器三维游戏客户端实践，作为 UE5 核心作品之外的跨引擎验证。"
+              description="补充展示移动端 AR 与浏览器三维游戏客户端实践，拓展实时渲染与游戏开发的应用场景。"
             />
 
             <nav className="work-directory additional-directory" aria-label="拓展项目目录" data-reveal>

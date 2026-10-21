@@ -1136,7 +1136,7 @@ function App() {
           <HeroVideo />
           <div className="hero-wash" aria-hidden="true" />
           <div className="hero-content page-width">
-            <p className="hero-kicker">GAME DEVELOPMENT · TECHNICAL ART · UE5</p>
+            <p className="hero-kicker">GAME DEVELOPMENT · TECHNICAL ART · UE5 / UNITY</p>
             <h1 id="hero-title">
               <span className="hero-title-line"><span className="hero-title-word">GAME DEV</span></span>
               <span className="hero-title-line"><span className="hero-title-word">TECH ART</span></span>
@@ -1144,7 +1144,7 @@ function App() {
             <div className="hero-bottom">
               <div>
                 <strong>施凯峰 · XIAOKAI</strong>
-                <p>游戏开发 / 技术美术 / UE5 工程实践</p>
+                <p>游戏开发 / 技术美术 / UE5 · Unity 实时渲染实践</p>
               </div>
               <p>从最终画面出发，回到材质、逻辑与引擎实现。</p>
             </div>
@@ -1173,7 +1173,7 @@ function App() {
 
             <div className="profile-copy" data-reveal>
               <p className="profile-lead">
-                云南大学数字媒体技术 2027 届本科生，专业成绩前 5%。我对游戏的兴趣不仅来自长期游玩，也来自对角色、场景与交互如何被实现的持续好奇；希望把这份热爱发展为长期职业，在游戏开发、技术美术与 UE5 工程方向持续深耕。
+                云南大学数字媒体技术 2027 届本科生，专业成绩前 5%。我对游戏的兴趣不仅来自长期游玩，也来自对角色、场景与交互如何被实现的持续好奇；希望把这份热爱发展为长期职业，在 UE5 与 Unity 方向持续深耕，将游戏开发、技术美术与实时渲染实践沉淀为可验证的工程能力。
               </p>
               <div className="profile-detail">
                 <p>
@@ -1326,7 +1326,7 @@ function App() {
               <span className="contact-title-line"><span className="contact-title-word">LET&apos;S MAKE</span></span>
               <span className="contact-title-line"><span className="contact-title-word">THE NEXT FRAME</span></span>
             </h2>
-            <p>期待游戏开发、技术美术与 UE5 工程相关的实习机会。</p>
+            <p>期待游戏开发、技术美术与 UE5 / Unity 实时渲染相关的实习机会。</p>
             <div className="contact-actions">
               <a href="mailto:3126976394@qq.com">
                 发送邮件
@@ -1341,7 +1341,7 @@ function App() {
 
           <footer className="site-footer page-width">
             <span>© 2026 SHI KAIFENG</span>
-            <span>GAME DEVELOPMENT · TECHNICAL ART · UE5</span>
+            <span>GAME DEVELOPMENT · TECHNICAL ART · UE5 / UNITY</span>
             <a href="#top">BACK TO TOP <ArrowUpRight size={14} /></a>
           </footer>
         </section>

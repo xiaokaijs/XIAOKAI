@@ -4,7 +4,7 @@
   height: 100%;
   overflow: hidden;
   background:
-    linear-gradient(135deg, #f2fff9, #62d8d0 48%, #293644);
+    linear-gradient(135deg, var(--grainient-color-1, #f2fff9), var(--grainient-color-2, #62d8d0) 48%, var(--grainient-color-3, #293644));
 }
 
 .grainient-container canvas {

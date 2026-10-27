@@ -1,6 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowUpRight,
@@ -19,10 +17,14 @@ import {
   Sparkles,
 } from 'lucide-react'
 import Grainient from './Grainient.jsx'
+import { getPlaybackPolicy, useManagedVideo } from './mediaPlayback.js'
+import './media.css'
 
-gsap.registerPlugin(ScrollTrigger)
-
-const assetPath = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`
+const assetPath = (path) => {
+  const optimized = path.includes('/media/posters/') ? path.replace(/\.jpg$/, '.webp') : path
+  return `${import.meta.env.BASE_URL}${optimized.replace(/^\/+/, '')}`
+}
+const filmSource = (path, policy) => path.replace('/media/films/', `/media/${policy.compact || policy.limited ? 'mobile' : 'previews'}/`)
 const portfolioEmail = '3126976394@qq.com'
 
 async function copyTextToClipboard(text) {
@@ -391,13 +393,11 @@ function addMediaReveal(timeline, media, position = '<0.12') {
   }
 }
 
-function usePortfolioMotion(scopeRef) {
-  useLayoutEffect(() => {
-    const root = scopeRef.current
+function initializePortfolioMotion(root, gsap, ScrollTrigger) {
     if (!root) return undefined
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const hasDeepLink = Boolean(window.location.hash && window.location.hash !== '#top')
+    const hasDeepLink = Boolean(window.location.hash && window.location.hash !== '#top') || performance.now() > 1800
     let cancelled = false
     let desktopMotion
     let deepLinkFrame = 0
@@ -415,6 +415,7 @@ function usePortfolioMotion(scopeRef) {
 
       return () => {
         root.classList.remove('motion-ready', 'motion-reduced')
+        window.history.scrollRestoration = previousScrollRestoration
       }
     }
 
@@ -721,91 +722,75 @@ function usePortfolioMotion(scopeRef) {
       context.revert()
       root.classList.remove('motion-ready')
     }
+}
+
+function usePortfolioMotion(scopeRef) {
+  useEffect(() => {
+    const root = scopeRef.current
+    if (!root) return undefined
+    if (getPlaybackPolicy().manual) {
+      root.classList.add('motion-reduced')
+      return () => root.classList.remove('motion-reduced')
+    }
+    let disposed = false
+    let cleanup
+    // Render the readable page first. Animation libraries are an enhancement,
+    // so a failed/slow animation chunk must not leave an opaque opening screen.
+    const timer = window.setTimeout(async () => {
+      try {
+        const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+          import('gsap'), import('gsap/ScrollTrigger'),
+        ])
+        if (disposed) return
+        gsap.registerPlugin(ScrollTrigger)
+        cleanup = initializePortfolioMotion(root, gsap, ScrollTrigger)
+      } catch {
+        root.classList.remove('motion-ready')
+        root.classList.add('motion-failed')
+      }
+    }, 0)
+    return () => {
+      disposed = true
+      window.clearTimeout(timer)
+      cleanup?.()
+      root.classList.remove('motion-failed')
+    }
   }, [scopeRef])
 }
 
 function HeroVideo() {
-  const videoRef = useRef(null)
-  const [ready, setReady] = useState(false)
-  const [paused, setPaused] = useState(true)
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return undefined
-
-    let observer
-    let heroVisible = true
-    const startPlayback = () => {
-      if (
-        document.hidden ||
-        !heroVisible ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ) return
-      const result = video.play()
-      if (result?.then) result.then(() => setPaused(false)).catch(() => setPaused(true))
-    }
-    const onVisibilityChange = () => {
-      if (document.hidden) video.pause()
-      else startPlayback()
-    }
-
-    observer = new IntersectionObserver(
-      ([entry]) => {
-        heroVisible = entry.isIntersecting
-        if (heroVisible) startPlayback()
-        else video.pause()
-      },
-      { threshold: 0.18 },
-    )
-    observer.observe(video)
-    document.addEventListener('visibilitychange', onVisibilityChange)
-
-    return () => {
-      observer.disconnect()
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-      video.pause()
-    }
-  }, [])
-
-  const togglePlayback = () => {
-    const video = videoRef.current
-    if (!video) return
-
-    if (video.paused) {
-      const result = video.play()
-      if (result?.catch) result.catch(() => undefined)
-      setPaused(false)
-    } else {
-      video.pause()
-      setPaused(true)
-    }
-  }
+  const [policy] = useState(getPlaybackPolicy)
+  const playback = useManagedVideo({
+    src: filmSource(assetPath('/media/films/portfolio-hero-web.mp4'), policy),
+    autoplay: true,
+  })
+  const { videoRef, status, paused, toggle, events } = playback
+  const ready = status === 'playing' || status === 'ready' || status === 'paused'
 
   return (
     <>
+      <img className="hero-poster" src={assetPath('/media/posters/portfolio-hero.jpg')} alt="" width="1280" height="720" fetchPriority="high" decoding="async" />
       <video
-        ref={videoRef}
+        ref={(video) => { videoRef.current = video; playback.frameRef.current = video }}
         className={`hero-video ${ready ? 'is-ready' : ''}`}
-        src={assetPath('/media/films/portfolio-hero-web.mp4')}
-        poster={assetPath('/media/posters/portfolio-hero.jpg')}
         muted
         loop
         playsInline
-        preload="metadata"
-        onCanPlay={() => setReady(true)}
-        onPlay={() => setPaused(false)}
-        onPause={() => setPaused(true)}
+        preload="none"
+        {...events}
         aria-hidden="true"
       />
       <button
         className="hero-video-toggle"
         type="button"
-        onClick={togglePlayback}
+        onClick={toggle}
         aria-label={paused ? '播放背景视频' : '暂停背景视频'}
         title={paused ? '播放背景视频' : '暂停背景视频'}
       >
         {paused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}
       </button>
+      {status === 'error' && <span className="hero-media-status" role="status">背景视频暂时无法加载，可点播放重试；下滑即可查看作品</span>}
+      {status === 'loading' && playback.slow && <span className="hero-media-status" role="status">正在缓冲背景视频，作品内容已可浏览</span>}
     </>
   )
 }
@@ -909,77 +894,12 @@ function SectionHeading({ index, label, title, description, inverse = false }) {
 }
 
 function InlineMedia({ media, primary = false }) {
-  const frameRef = useRef(null)
-  const videoRef = useRef(null)
   const isLoop = media.playback === 'loop'
-  const [manualPause, setManualPause] = useState(false)
-  const [paused, setPaused] = useState(true)
-  const [mediaLoaded, setMediaLoaded] = useState(false)
-
-  useEffect(() => {
-    const frame = frameRef.current
-    if (!frame || media.type !== 'video') return undefined
-
-    // Loop previews can warm up shortly before entering the viewport. Full
-    // interactive films wait for an explicit play intent instead.
-    if (!isLoop) return undefined
-
-    const loadObserver = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return
-        setMediaLoaded(true)
-        loadObserver.disconnect()
-      },
-      { rootMargin: '20% 0px', threshold: 0 },
-    )
-
-    loadObserver.observe(frame)
-    return () => loadObserver.disconnect()
-  }, [isLoop, media.type])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || !mediaLoaded) return undefined
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && isLoop && !manualPause && !document.hidden) {
-          const result = video.play()
-          if (result?.catch) result.catch(() => setPaused(true))
-        } else if (!entry.isIntersecting) {
-          video.pause()
-        }
-      },
-      { threshold: 0.2 },
-    )
-
-    observer.observe(video)
-    return () => observer.disconnect()
-  }, [isLoop, manualPause, mediaLoaded])
-
-  const toggleLoopPlayback = () => {
-    const video = videoRef.current
-    if (!video) return
-
-    if (!mediaLoaded) {
-      video.src = media.src
-      video.load()
-      setMediaLoaded(true)
-      setManualPause(false)
-      const result = video.play()
-      if (result?.catch) result.catch(() => setPaused(true))
-      return
-    }
-
-    if (video.paused) {
-      setManualPause(false)
-      const result = video.play()
-      if (result?.catch) result.catch(() => setPaused(true))
-    } else {
-      setManualPause(true)
-      video.pause()
-    }
-  }
+  const [policy] = useState(getPlaybackPolicy)
+  const playback = useManagedVideo({ src: filmSource(media.src, policy), autoplay: isLoop })
+  const { frameRef, videoRef, status, paused, slow, toggle, pause, events } = playback
+  const showPoster = status === 'idle' || status === 'error' || (status === 'loading' && (videoRef.current?.readyState || 0) < 2)
+  const showStart = paused && (status === 'idle' || status === 'error' || (policy.manual && status !== 'loading'))
 
   return (
     <figure
@@ -988,32 +908,32 @@ function InlineMedia({ media, primary = false }) {
     >
       <div ref={frameRef} className="inline-media-frame">
         {media.type === 'image' ? (
-          <img src={media.src} alt={media.title} loading="lazy" decoding="async" fetchPriority="low" />
+          <img src={media.src} srcSet={`${assetPath('/media/dagger-render-small.webp')} 800w, ${media.src} 1600w`} sizes="(max-width: 800px) 92vw, 820px" alt={media.title} width="1600" height="900" loading="lazy" decoding="async" fetchPriority="low" />
         ) : (
+          <>
           <video
             ref={videoRef}
-            src={isLoop ? (mediaLoaded ? media.src : undefined) : media.src}
-            poster={media.poster}
             controls={!isLoop}
             muted={isLoop}
             loop={isLoop}
             playsInline
-            preload={isLoop && mediaLoaded ? 'metadata' : 'none'}
-            onPlay={() => {
-              setMediaLoaded(true)
-              setPaused(false)
-            }}
-            onPause={() => setPaused(true)}
+            preload="none"
+            {...events}
             aria-label={`${media.title} 视频`}
           >
             当前浏览器不支持视频播放。
           </video>
+          <img className={`media-poster ${showPoster ? '' : 'is-hidden'}`} src={media.poster} alt="" width={media.orientation === 'portrait' ? 432 : 960} height={media.orientation === 'portrait' ? 768 : 540} loading="lazy" decoding="async" fetchPriority="low" />
+          {showStart && <button className="media-start" type="button" onClick={toggle} aria-label={`播放${media.title}`}><Play size={22} fill="currentColor" /><span>{status === 'error' ? '重新加载视频' : '点击播放'}</span></button>}
+          {status === 'loading' && <span className="media-status" role="status">{slow ? '当前网络较慢，正在缓冲轻量视频…' : '正在缓冲…'}</span>}
+          {status === 'error' && <span className="media-status is-error" role="status">暂时无法加载，可重试或<a href={media.src} target="_blank" rel="noreferrer" onClick={pause}>直接打开原片</a></span>}
+          </>
         )}
-        {isLoop && (
+        {isLoop && !showStart && (
           <button
             className="inline-media-toggle"
             type="button"
-            onClick={toggleLoopPlayback}
+            onClick={toggle}
             aria-label={paused ? `播放${media.title}` : `暂停${media.title}`}
             title={paused ? `播放${media.title}` : `暂停${media.title}`}
           >
@@ -1026,6 +946,7 @@ function InlineMedia({ media, primary = false }) {
           <div className="media-caption-kicker">
             <span className="media-sequence">{media.sequence}</span>
             <span className="media-eyebrow">{media.eyebrow}</span>
+            {media.type === 'video' && <a className="media-original-link" href={media.src} target="_blank" rel="noreferrer" onClick={pause}>高清原片 <ArrowUpRight size={12} /></a>}
           </div>
           <h3>{media.title}</h3>
         </div>
@@ -1082,7 +1003,17 @@ function ProjectEntry({ project }) {
 
 function App() {
   const appRef = useRef(null)
+  const [backgroundEnabled, setBackgroundEnabled] = useState(false)
   usePortfolioMotion(appRef)
+  useEffect(() => {
+    if (getPlaybackPolicy().manual) return undefined
+    if ('requestIdleCallback' in window) {
+      const task = window.requestIdleCallback(() => setBackgroundEnabled(true), { timeout: 1800 })
+      return () => window.cancelIdleCallback(task)
+    }
+    const timer = window.setTimeout(() => setBackgroundEnabled(true), 500)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   return (
     <div
@@ -1091,8 +1022,8 @@ function App() {
       className="site-shell"
       style={{ '--hero-poster': `url(${assetPath('/media/posters/portfolio-hero.jpg')})` }}
     >
-      <div className="site-grainient" aria-hidden="true">
-        <Grainient
+      <div className="site-grainient" aria-hidden="true" style={{ background: 'linear-gradient(135deg, #f2fff9, #62d8d0 48%, #293644)' }}>
+        {backgroundEnabled && <Grainient
           color1="#F2FFF9"
           color2="#62D8D0"
           color3="#293644"
@@ -1114,7 +1045,7 @@ function App() {
           centerX={-0.08}
           centerY={0.03}
           zoom={0.98}
-        />
+        />}
       </div>
       <Header />
 

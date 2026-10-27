@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { Mesh, Program, Renderer, Triangle } from 'ogl'
 import './Grainient.css'
 
 const hexToRgb = (hex) => {
@@ -133,110 +132,41 @@ const Grainient = ({
     const container = containerRef.current
     if (!container) return undefined
 
+    container.classList.remove('is-fallback')
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const isMobile =
-      window.matchMedia('(max-width: 900px)').matches ||
-      window.matchMedia('(pointer: coarse)').matches ||
-      (navigator.maxTouchPoints ?? 0) > 1
+    const isMobile = window.matchMedia('(max-width: 900px), (pointer: coarse)').matches
     const connection = navigator.connection
     const isLowPower = Boolean(
       connection?.saveData ||
         connection?.effectiveType === 'slow-2g' ||
         connection?.effectiveType === '2g',
     )
-    const targetFps = reducedMotion || isLowPower ? 0 : isMobile ? 24 : 30
-    const frameInterval = targetFps > 0 ? 1000 / targetFps : 0
-    const pixelRatio = reducedMotion || isLowPower || isMobile ? 1 : 1.25
-    let renderer
-
-    try {
-      renderer = new Renderer({
-        webgl: 2,
-        alpha: false,
-        antialias: false,
-        dpr: Math.min(window.devicePixelRatio || 1, pixelRatio),
-      })
-    } catch {
+    // Phones and constrained connections get the same palette without loading
+    // OGL, creating a WebGL context, or keeping a background animation running.
+    if (reducedMotion || isMobile || isLowPower) {
       container.classList.add('is-fallback')
+      container.dataset.renderMode = 'static'
       return undefined
     }
 
-    const gl = renderer.gl
-    const canvas = gl.canvas
-    canvas.setAttribute('aria-hidden', 'true')
-    container.appendChild(canvas)
-
-    const geometry = new Triangle(gl)
-    const program = new Program(gl, {
-      vertex,
-      fragment,
-      uniforms: {
-        iTime: { value: 0 },
-        iResolution: { value: new Float32Array([1, 1]) },
-        uTimeSpeed: { value: timeSpeed },
-        uColorBalance: { value: colorBalance },
-        uWarpStrength: { value: warpStrength },
-        uWarpFrequency: { value: warpFrequency },
-        uWarpSpeed: { value: warpSpeed },
-        uWarpAmplitude: { value: warpAmplitude },
-        uBlendAngle: { value: blendAngle },
-        uBlendSoftness: { value: blendSoftness },
-        uRotationAmount: { value: rotationAmount },
-        uNoiseScale: { value: noiseScale },
-        uGrainAmount: { value: grainAmount },
-        uGrainScale: { value: grainScale },
-        uGrainAnimated: { value: grainAnimated ? 1 : 0 },
-        uContrast: { value: contrast },
-        uGamma: { value: gamma },
-        uSaturation: { value: saturation },
-        uCenterOffset: { value: new Float32Array([centerX, centerY]) },
-        uZoom: { value: zoom },
-        uColor1: { value: new Float32Array(hexToRgb(color1)) },
-        uColor2: { value: new Float32Array(hexToRgb(color2)) },
-        uColor3: { value: new Float32Array(hexToRgb(color3)) },
-      },
-    })
-    const mesh = new Mesh(gl, { geometry, program })
-
-    const render = () => renderer.render({ scene: mesh })
-    const setSizeNow = () => {
-      const rect = container.getBoundingClientRect()
-      renderer.setSize(Math.max(1, Math.floor(rect.width)), Math.max(1, Math.floor(rect.height)))
-      program.uniforms.iResolution.value[0] = gl.drawingBufferWidth
-      program.uniforms.iResolution.value[1] = gl.drawingBufferHeight
-      render()
-    }
-
+    const frameInterval = 1000 / 24
+    const maxBufferWidth = 1600
+    const maxBufferPixels = 1400000
+    let disposed = false
+    let renderer
+    let gl
+    let canvas
+    let geometry
+    let program
+    let renderOptions
+    let resizeObserver
+    let intersectionObserver
     let resizeFrameId = 0
-    const scheduleResize = () => {
-      if (resizeFrameId) return
-      resizeFrameId = requestAnimationFrame(() => {
-        resizeFrameId = 0
-        setSizeNow()
-      })
-    }
-
-    const resizeObserver = new ResizeObserver(scheduleResize)
-    resizeObserver.observe(container)
-    setSizeNow()
-
     let frameId = 0
     let pageVisible = !document.hidden
-    // Wait for the first intersection callback before starting the render loop.
-    // The background is fixed, but this also prevents an off-screen mount from
-    // consuming a frame budget during initial page setup.
     let layerVisible = false
     let lastFrame = 0
     const startTime = performance.now()
-
-    const loop = (time) => {
-      if (time - lastFrame >= frameInterval) {
-        program.uniforms.iTime.value = (time - startTime) * 0.001
-        render()
-        lastFrame = time
-      }
-      frameId = requestAnimationFrame(loop)
-    }
 
     const stop = () => {
       if (!frameId) return
@@ -244,37 +174,197 @@ const Grainient = ({
       frameId = 0
     }
 
-    const start = () => {
-      if (reducedMotion || !pageVisible || !layerVisible || frameId) return
+    const cleanup = () => {
+      if (disposed) return
+      disposed = true
+      stop()
+      if (resizeFrameId) cancelAnimationFrame(resizeFrameId)
+      resizeObserver?.disconnect()
+      intersectionObserver?.disconnect()
+      window.removeEventListener('resize', scheduleResize)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      canvas?.removeEventListener('webglcontextlost', onContextLost)
+      // Cleanup also runs after a partially completed initialization. A failed
+      // GPU driver must not turn this decorative layer into a page error.
+      try { geometry?.remove?.() } catch { /* Continue releasing the context. */ }
+      try { program?.remove?.() } catch { /* Continue releasing the context. */ }
+      try {
+        if (gl && !gl.isContextLost()) gl.getExtension('WEBGL_lose_context')?.loseContext()
+      } catch { /* The context may already be gone. */ }
+      canvas?.remove()
+      renderer = null
+      gl = null
+    }
+
+    const useFallback = () => {
+      container.classList.add('is-fallback')
+      container.dataset.renderMode = 'static'
+      cleanup()
+    }
+
+    const onContextLost = (event) => {
+      event.preventDefault()
+      useFallback()
+    }
+
+    const render = () => {
+      if (disposed) return false
+      try {
+        renderer.render(renderOptions)
+        return true
+      } catch {
+        useFallback()
+        return false
+      }
+    }
+
+    const setSizeNow = () => {
+      if (disposed) return
+      try {
+        const rect = container.getBoundingClientRect()
+        const width = Math.max(1, rect.width)
+        const height = Math.max(1, rect.height)
+        const scale = Math.min(1, maxBufferWidth / width, Math.sqrt(maxBufferPixels / (width * height)))
+        const bufferWidth = Math.max(1, Math.floor(width * scale))
+        const bufferHeight = Math.max(1, Math.floor(height * scale))
+        if (gl.canvas.width !== bufferWidth || gl.canvas.height !== bufferHeight) {
+          renderer.setSize(bufferWidth, bufferHeight)
+          canvas.style.width = '100%'
+          canvas.style.height = '100%'
+        }
+        program.uniforms.iResolution.value[0] = gl.drawingBufferWidth
+        program.uniforms.iResolution.value[1] = gl.drawingBufferHeight
+        render()
+      } catch {
+        useFallback()
+      }
+    }
+
+    const scheduleResize = () => {
+      if (disposed || resizeFrameId) return
+      resizeFrameId = requestAnimationFrame(() => {
+        resizeFrameId = 0
+        setSizeNow()
+      })
+    }
+
+    const loop = (time) => {
+      if (disposed) return
+      if (time - lastFrame >= frameInterval) {
+        program.uniforms.iTime.value = (time - startTime) * 0.001
+        if (!render()) return
+        // Keep the fractional frame remainder rather than falling to 20fps on
+        // a 60Hz display. No arrays or options objects are allocated per frame.
+        lastFrame = time - ((time - lastFrame) % frameInterval)
+      }
       frameId = requestAnimationFrame(loop)
     }
 
-    const intersectionObserver = new IntersectionObserver(([entry]) => {
-      layerVisible = entry.isIntersecting
-      if (layerVisible) start()
-      else stop()
-    })
-    intersectionObserver.observe(container)
+    const start = () => {
+      if (disposed || !pageVisible || !layerVisible || frameId) return
+      lastFrame = performance.now()
+      frameId = requestAnimationFrame(loop)
+    }
 
     const onVisibilityChange = () => {
       pageVisible = !document.hidden
       if (pageVisible) start()
       else stop()
     }
-    document.addEventListener('visibilitychange', onVisibilityChange)
 
-    return () => {
-      stop()
-      if (resizeFrameId) cancelAnimationFrame(resizeFrameId)
-      resizeObserver.disconnect()
-      intersectionObserver.disconnect()
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-      geometry.remove?.()
-      program.remove?.()
-      gl.getExtension('WEBGL_lose_context')?.loseContext()
-      renderer = null
-      canvas.remove()
+    const initialize = async () => {
+      try {
+        const { Mesh, Program, Renderer, Triangle } = await import('./grainientRenderer.js')
+        if (disposed) return
+        canvas = document.createElement('canvas')
+        // Resolve the exact context first so partial Renderer failures can also
+        // release it, and WebGL 1 never compiles the GLSL 300 shader by mistake.
+        gl = canvas.getContext('webgl2', {
+          alpha: false,
+          depth: false,
+          antialias: false,
+          powerPreference: 'low-power',
+        })
+        if (!gl) throw new Error('The decorative shader needs WebGL 2')
+        renderer = new Renderer({
+          canvas,
+          webgl: 2,
+          alpha: false,
+          depth: false,
+          antialias: false,
+          powerPreference: 'low-power',
+          dpr: 1,
+        })
+        gl = renderer.gl
+        if (!renderer.isWebgl2) throw new Error('The decorative shader needs WebGL 2')
+        canvas.setAttribute('aria-hidden', 'true')
+        canvas.addEventListener('webglcontextlost', onContextLost)
+        geometry = new Triangle(gl)
+        program = new Program(gl, {
+          vertex,
+          fragment,
+          depthTest: false,
+          depthWrite: false,
+          uniforms: {
+            iTime: { value: 0 },
+            iResolution: { value: new Float32Array([1, 1]) },
+            uTimeSpeed: { value: timeSpeed },
+            uColorBalance: { value: colorBalance },
+            uWarpStrength: { value: warpStrength },
+            uWarpFrequency: { value: warpFrequency },
+            uWarpSpeed: { value: warpSpeed },
+            uWarpAmplitude: { value: warpAmplitude },
+            uBlendAngle: { value: blendAngle },
+            uBlendSoftness: { value: blendSoftness },
+            uRotationAmount: { value: rotationAmount },
+            uNoiseScale: { value: noiseScale },
+            uGrainAmount: { value: grainAmount },
+            uGrainScale: { value: grainScale },
+            uGrainAnimated: { value: grainAnimated ? 1 : 0 },
+            uContrast: { value: contrast },
+            uGamma: { value: gamma },
+            uSaturation: { value: saturation },
+            uCenterOffset: { value: new Float32Array([centerX, centerY]) },
+            uZoom: { value: zoom },
+            uColor1: { value: new Float32Array(hexToRgb(color1)) },
+            uColor2: { value: new Float32Array(hexToRgb(color2)) },
+            uColor3: { value: new Float32Array(hexToRgb(color3)) },
+          },
+        })
+        if (!gl.getProgramParameter(program.program, gl.LINK_STATUS)) {
+          throw new Error('The decorative shader failed to link')
+        }
+        renderOptions = { scene: new Mesh(gl, { geometry, program }) }
+        container.appendChild(canvas)
+        setSizeNow()
+        if (disposed) return
+        container.dataset.renderMode = 'animated'
+
+        if (typeof ResizeObserver !== 'undefined') {
+          resizeObserver = new ResizeObserver(scheduleResize)
+          resizeObserver.observe(container)
+        } else {
+          window.addEventListener('resize', scheduleResize, { passive: true })
+        }
+        if (typeof IntersectionObserver !== 'undefined') {
+          intersectionObserver = new IntersectionObserver(([entry]) => {
+            layerVisible = entry.isIntersecting
+            if (layerVisible) start()
+            else stop()
+          })
+          intersectionObserver.observe(container)
+        } else {
+          layerVisible = true
+          start()
+        }
+        document.addEventListener('visibilitychange', onVisibilityChange)
+      } catch {
+        if (!disposed) useFallback()
+      }
     }
+
+    initialize()
+    return cleanup
   }, [
     blendAngle,
     blendSoftness,
@@ -300,7 +390,14 @@ const Grainient = ({
     zoom,
   ])
 
-  return <div ref={containerRef} className={`grainient-container ${className}`.trim()} aria-hidden="true" />
+  return (
+    <div
+      ref={containerRef}
+      className={`grainient-container ${className}`.trim()}
+      style={{ '--grainient-color-1': color1, '--grainient-color-2': color2, '--grainient-color-3': color3 }}
+      aria-hidden="true"
+    />
+  )
 }
 
 export default Grainient

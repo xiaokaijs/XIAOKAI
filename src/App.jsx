@@ -321,6 +321,31 @@ const additionalProjects = [
       size: 'standard',
     },
   },
+  {
+    index: 'A3',
+    slug: 'taptap-first-light',
+    tone: 'cyan',
+    eyebrow: 'TAPTAP GAMEJAM / NARRATIVE PUZZLE',
+    title: '涌现：第一粒光',
+    description:
+      '已正式提交 TapTap GameJam 的叙事解谜原型。围绕概念组合、星盘排列与光传播推进章节，接入分层提示、撤销/重做和存档恢复。负责玩法与视觉取舍、资源整合及效果验证，结合 Agent 辅助 Lua 实现与美术资源制作。',
+    role: '玩法与视觉整合 / AI 辅助开发',
+    year: '2026.10',
+    tags: ['TapTap Maker / UrhoX', 'Lua', 'NanoVG', '叙事解谜', 'AI 辅助开发'],
+    media: {
+      type: 'video',
+      sequence: 'LAB FILM / A3',
+      eyebrow: 'GAMEJAM GAMEPLAY',
+      title: '涌现：第一粒光玩法演示',
+      description: '展示概念发现、星盘布阵与前期章节推进，点击播放并保留原音轨。',
+      duration: '01:45',
+      format: '720P · 30 FPS',
+      src: assetPath('/media/films/taptap-first-light.mp4'),
+      poster: assetPath('/media/posters/taptap-first-light.webp'),
+      playback: 'manual',
+      size: 'standard',
+    },
+  },
 ]
 
 const capabilities = [
@@ -1190,7 +1215,7 @@ function App() {
               index="03"
               label="MORE WORK"
               title="实验与拓展"
-              description="补充展示移动端 AR 与浏览器三维游戏客户端实践，拓展实时渲染与游戏开发的应用场景。"
+              description="补充展示移动端 AR、浏览器三维客户端与 GameJam 叙事解谜原型，拓展实时渲染与游戏开发的应用场景。"
             />
 
             <nav className="work-directory additional-directory" aria-label="拓展项目目录" data-reveal>

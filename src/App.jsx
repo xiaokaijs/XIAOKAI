@@ -18,13 +18,14 @@ import {
 } from 'lucide-react'
 import Grainient from './Grainient.jsx'
 import { getPlaybackPolicy, useManagedVideo } from './mediaPlayback.js'
+import { resolveVideoQuality, videoSource } from './videoSources.js'
 import './media.css'
 
 const assetPath = (path) => {
   const optimized = path.includes('/media/posters/') ? path.replace(/\.jpg$/, '.webp') : path
   return `${import.meta.env.BASE_URL}${optimized.replace(/^\/+/, '')}`
 }
-const filmSource = (path, policy) => path.replace('/media/films/', `/media/${policy.compact || policy.limited ? 'mobile' : 'previews'}/`)
+const filmSource = videoSource
 const portfolioEmail = '3126976394@qq.com'
 
 async function copyTextToClipboard(text) {
@@ -214,7 +215,7 @@ const projects = [
       title: 'Escape PC 原作演示',
       description: '展示第一人称探索、钥匙收集、门锁反馈与关卡推进。',
       duration: '00:28',
-      format: '720P · 30 FPS',
+      format: '1080P · 30 FPS',
       src: assetPath('/media/films/escape-pc-demo.mp4'),
       poster: assetPath('/media/posters/escape-pc-demo.jpg'),
       playback: 'loop',
@@ -288,7 +289,7 @@ const additionalProjects = [
       title: 'AR 桌宠真机演示',
       description: '展示图像识别、角色锚定、移动反馈与桌宠状态界面。',
       duration: '00:24',
-      format: '540 × 960 · 30 FPS',
+      format: '720 × 1280 · 30 FPS',
       src: assetPath('/media/films/unity-ar-pet.mp4'),
       poster: assetPath('/media/posters/unity-ar-pet.jpg'),
       playback: 'loop',
@@ -314,7 +315,7 @@ const additionalProjects = [
       title: '零点回声精选流程',
       description: '截取三章流程中的场景探索、设备交互与谜题推进片段。',
       duration: '00:33',
-      format: '720P · 30 FPS',
+      format: '1080P · 30 FPS',
       src: assetPath('/media/films/zero-echo-highlights.mp4'),
       poster: assetPath('/media/posters/zero-echo-highlights.jpg'),
       playback: 'loop',
@@ -339,7 +340,7 @@ const additionalProjects = [
       title: '涌现：第一粒光玩法演示',
       description: '展示概念发现、星盘布阵与前期章节推进，点击播放并保留原音轨。',
       duration: '01:45',
-      format: '720P · 30 FPS',
+      format: '1080P · 30 FPS',
       src: assetPath('/media/films/taptap-first-light.mp4'),
       poster: assetPath('/media/posters/taptap-first-light.webp'),
       playback: 'manual',
@@ -921,8 +922,11 @@ function SectionHeading({ index, label, title, description, inverse = false }) {
 function InlineMedia({ media, primary = false }) {
   const isLoop = media.playback === 'loop'
   const [policy] = useState(getPlaybackPolicy)
+  const [quality, setQuality] = useState('auto')
   const playback = useManagedVideo({ src: filmSource(media.src, policy), autoplay: isLoop })
-  const { frameRef, videoRef, status, paused, slow, toggle, pause, events } = playback
+  const { frameRef, videoRef, status, paused, slow, toggle, pause, changeSource, events } = playback
+  const highSource = filmSource(media.src, policy, 'high')
+  const qualityLabel = { high: '高清', balanced: '流畅', data: '省流' }[resolveVideoQuality(policy)]
   const showPoster = status === 'idle' || status === 'error' || (status === 'loading' && (videoRef.current?.readyState || 0) < 2)
   const showStart = paused && (status === 'idle' || status === 'error' || (policy.manual && status !== 'loading'))
 
@@ -950,8 +954,8 @@ function InlineMedia({ media, primary = false }) {
           </video>
           <img className={`media-poster ${showPoster ? '' : 'is-hidden'}`} src={media.poster} alt="" width={media.orientation === 'portrait' ? 432 : 960} height={media.orientation === 'portrait' ? 768 : 540} loading="lazy" decoding="async" fetchPriority="low" />
           {showStart && <button className="media-start" type="button" onClick={toggle} aria-label={`播放${media.title}`}><Play size={22} fill="currentColor" /><span>{status === 'error' ? '重新加载视频' : '点击播放'}</span></button>}
-          {status === 'loading' && <span className="media-status" role="status">{slow ? '当前网络较慢，正在缓冲轻量视频…' : '正在缓冲…'}</span>}
-          {status === 'error' && <span className="media-status is-error" role="status">暂时无法加载，可重试或<a href={media.src} target="_blank" rel="noreferrer" onClick={pause}>直接打开原片</a></span>}
+          {status === 'loading' && <span className="media-status" role="status">{slow ? '正在缓冲，可在下方画质选项中切换流畅或省流' : '正在缓冲…'}</span>}
+          {status === 'error' && <span className="media-status is-error" role="status">暂时无法加载，可重试或<a href={highSource} target="_blank" rel="noreferrer" onClick={pause}>直接打开高清版</a></span>}
           </>
         )}
         {isLoop && !showStart && (
@@ -971,7 +975,22 @@ function InlineMedia({ media, primary = false }) {
           <div className="media-caption-kicker">
             <span className="media-sequence">{media.sequence}</span>
             <span className="media-eyebrow">{media.eyebrow}</span>
-            {media.type === 'video' && <a className="media-original-link" href={media.src} target="_blank" rel="noreferrer" onClick={pause}>高清原片 <ArrowUpRight size={12} /></a>}
+            {media.type === 'video' && <>
+              <label className="media-quality">
+                <span>画质</span>
+                <select aria-label={`${media.title}播放画质`} value={quality} onChange={(event) => {
+                  const nextQuality = event.target.value
+                  setQuality(nextQuality)
+                  changeSource(filmSource(media.src, policy, nextQuality))
+                }}>
+                  <option value="auto">自动 · {qualityLabel}</option>
+                  <option value="high">高清</option>
+                  <option value="balanced">流畅</option>
+                  <option value="data">省流</option>
+                </select>
+              </label>
+              <a className="media-original-link" href={highSource} target="_blank" rel="noreferrer" onClick={pause}>打开高清版 <ArrowUpRight size={12} /></a>
+            </>}
           </div>
           <h3>{media.title}</h3>
         </div>

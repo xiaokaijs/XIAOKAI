@@ -43,6 +43,9 @@ export function useManagedVideo({ src, autoplay = false }) {
   const manualPause = useRef(false)
   const playIntent = useRef(0)
   const resumeAt = useRef(0)
+  const restoringTime = useRef(false)
+  const activeSource = useRef(src)
+  const previousSource = useRef(src)
   const manualIntent = useRef(false)
   const slowTimer = useRef(0)
   const [slow, setSlow] = useState(false)
@@ -67,8 +70,8 @@ export function useManagedVideo({ src, autoplay = false }) {
     video.preload = preload
     // Calling load on every intersection discards the buffer. Only initialize
     // a new source here; a retry is an explicit action by the visitor.
-    if (video.getAttribute('src') !== src || retry) {
-      video.src = src
+    if (video.getAttribute('src') !== activeSource.current || retry) {
+      video.src = activeSource.current
       video.load()
     }
     return video
@@ -113,6 +116,34 @@ export function useManagedVideo({ src, autoplay = false }) {
     }
   }
 
+  // Called in the select's user-activation stack. Keep the playhead and playing
+  // state without reloading on scroll, losing audio, or loading untouched films.
+  const changeSource = (nextSource, preserveTime = true) => {
+    if (activeSource.current === nextSource) return
+    const video = videoRef.current
+    const attached = Boolean(video?.getAttribute('src'))
+    const wasPlaying = attached && !video.paused
+    if (!preserveTime) {
+      resumeAt.current = 0
+      restoringTime.current = false
+    } else if (attached && video.readyState >= 1 && !video.seeking && !restoringTime.current && Number.isFinite(video.currentTime)) {
+      resumeAt.current = video.currentTime
+    }
+    pause()
+    activeSource.current = nextSource
+    setStatus('idle')
+    setPaused(true)
+    if (!attached) return
+    if (wasPlaying) play(true)
+    else attach('metadata')
+  }
+
+  useEffect(() => {
+    if (previousSource.current === src) return
+    previousSource.current = src
+    changeSource(src, false)
+  }, [src])
+
   useEffect(() => {
     const frame = frameRef.current
     const video = videoRef.current
@@ -121,7 +152,7 @@ export function useManagedVideo({ src, autoplay = false }) {
 
     const unload = () => {
       if (!video.getAttribute('src')) return
-      resumeAt.current = Number.isFinite(video.currentTime) ? video.currentTime : 0
+      if (video.readyState >= 1 && !video.seeking && !restoringTime.current && Number.isFinite(video.currentTime)) resumeAt.current = video.currentTime
       pause()
       video.removeAttribute('src')
       video.load() // Stop off-screen network requests and release decoder memory.
@@ -166,14 +197,22 @@ export function useManagedVideo({ src, autoplay = false }) {
       video.pause()
       release(video)
     }
-  }, [src, mayAutoplay])
+  }, [mayAutoplay])
 
   const events = {
     onLoadedMetadata: () => {
       const video = videoRef.current
       if (resumeAt.current > 0 && Number.isFinite(video.duration)) {
-        video.currentTime = Math.min(resumeAt.current, Math.max(0, video.duration - 0.1))
+        resumeAt.current = Math.min(resumeAt.current, Math.max(0, video.duration - 0.1))
+        restoringTime.current = true
+        video.currentTime = resumeAt.current
+      }
+    },
+    onSeeked: () => {
+      const video = videoRef.current
+      if (restoringTime.current && Math.abs(video.currentTime - resumeAt.current) < 0.2) {
         resumeAt.current = 0
+        restoringTime.current = false
       }
     },
     onCanPlay: () => {
@@ -208,5 +247,5 @@ export function useManagedVideo({ src, autoplay = false }) {
     },
   }
 
-  return { frameRef, videoRef, status, paused, slow, policy, toggle, pause, events }
+  return { frameRef, videoRef, status, paused, slow, policy, toggle, pause, changeSource, events }
 }
